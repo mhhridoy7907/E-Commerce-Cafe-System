@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Cafe Menu Pro</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Poppins;
+}
+
+body{
+background:
+linear-gradient(rgba(0,0,0,.78),rgba(0,0,0,.78)),
+url('https://i.pinimg.com/736x/20/9c/82/209c82cdbd575c46460a1c952057f040.jpg');
+background-size:cover;
+background-position:center;
+background-attachment:fixed;
+color:#fff;
+}
+
+/* HEADER */
+
+header{
+padding:20px;
+position:sticky;
+top:0;
+z-index:100;
+background:rgba(0,0,0,.55);
+backdrop-filter:blur(14px);
+border-bottom:1px solid rgba(255,255,255,.08);
+}
+
+.top-bar{
+display:flex;
+justify-content:space-between;
+flex-wrap:wrap;
+gap:10px;
+align-items:center;
+}
+
+.logo{
+font-size:30px;
+font-weight:700;
+background:linear-gradient(to right,#c89b6a,#fff);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+}
+
+.search-box{
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+}
+
+.search{
+padding:12px;
+border-radius:30px;
+border:none;
+outline:none;
+width:250px;
+background:rgba(255,255,255,.08);
+color:#fff;
+}
+
+#categoryBox{
+padding:12px;
+border-radius:30px;
+border:none;
+outline:none;
+background:rgba(255,255,255,.08);
+color:#fff;
+min-width:180px;
+}
+
+#categoryBox option{
+background:#111;
+color:#fff;
+}
+
+/* GRID */
+
+.container{
+padding:25px;
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+gap:20px;
+}
+
+/* CARD */
+
+.card{
+background:rgba(255,255,255,.05);
+border-radius:20px;
+overflow:hidden;
+border:1px solid rgba(255,255,255,.05);
+transition:.3s;
+}
+
+.card:hover{
+transform:translateY(-5px);
+}
+
+.card img{
+width:100%;
+height:200px;
+object-fit:cover;
+}
+
+.card-body{
+padding:15px;
+}
+
+.price{
+color:#c89b6a;
+font-size:20px;
+font-weight:700;
+margin-top:5px;
+}
+
+.stock{
+margin-top:10px;
+font-weight:600;
+color:#00ff99;
+}
+
+.stock.out{
+color:red;
+}
+
+button{
+width:100%;
+padding:12px;
+margin-top:10px;
+border:none;
+border-radius:10px;
+background:linear-gradient(135deg,#c89b6a,#f3cd9b);
+font-weight:700;
+cursor:pointer;
+transition:.3s;
+}
+
+button:hover{
+opacity:.9;
+}
+
+button:disabled{
+background:#444;
+cursor:not-allowed;
+}
+
+/* MODAL */
+
+.modal,
+.invoice{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,.75);
+display:none;
+justify-content:center;
+align-items:center;
+z-index:999;
+}
+
+.modal-box,
+.invoice-box{
+background:#111;
+padding:20px;
+width:90%;
+max-width:400px;
+border-radius:15px;
+}
+
+.modal-box input,
+.modal-box textarea{
+width:100%;
+padding:12px;
+margin:8px 0;
+border-radius:10px;
+border:none;
+background:#1d1d1d;
+color:#fff;
+}
+
+.bill{
+font-size:22px;
+color:#f3cd9b;
+margin-top:10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+
+<div class="top-bar">
+
+<h1 class="logo">Cafe Menu</h1>
+
+<div class="search-box">
+
+<input
+class="search"
+placeholder="Search..."
+onkeyup="searchFood(this.value)"
+>
+
+<select id="categoryBox" onchange="filterCategory()">
+
+<option value="ALL">
+✨ All Categories
+</option>
+
+</select>
+
+</div>
+
+</div>
+
+</header>
+
+<div class="container" id="menu">
+Loading...
+</div>
+
+<!-- ORDER MODAL -->
+
+<div class="modal" id="orderModal">
+
+<div class="modal-box">
+
+<h2>Place Order</h2>
+
+<input id="name" placeholder="Name">
+
+<input id="phone" placeholder="Phone">
+
+<textarea id="address" placeholder="Address"></textarea>
+
+<input id="qty" type="number" placeholder="Qty">
+
+<button onclick="confirmOrder()">
+Confirm Order
+</button>
+
+<button onclick="closeModal()">
+Close
+</button>
+
+</div>
+
+</div>
+
+<!-- INVOICE -->
+
+<div class="invoice" id="invoice">
+
+<div class="invoice-box">
+
+<h2>Invoice</h2>
+
+<p id="invName"></p>
+
+<p id="invPhone"></p>
+
+<p id="invProduct"></p>
+
+<p id="invQty"></p>
+
+<p id="invOtp"></p>
+
+<div class="bill" id="invBill"></div>
+
+<button onclick="downloadPDF()">
+Download PDF
+</button>
+
+<button onclick="closeInvoice()">
+Close
+</button>
+
+</div>
+
+</div>
+
+<script>
+
+/* API URL */
+
+const API_URL = "https://script.google.com/macros/s/AKfycbyvPAd0VkuMplWzeT7TrLoGARF-Jca-r3L-XxaVcNO1hGRbhYQoU0tjyOzrgSBSidpL/exec";
+
+let allProducts = [];
+let currentProduct = null;
+let lastOrder = null;
+
+/* LOAD DATA */
+
+async function loadData(){
+
+try{
+
+const res = await fetch(API_URL);
+
+allProducts = await res.json();
+
+display(allProducts);
+
+loadCategories();
+
+}catch(err){
+
+document.getElementById("menu").innerHTML =
+"<h2>Server Offline</h2>";
+
+console.log(err);
+
+}
+
+}
+
+/* DISPLAY */
+
+function display(data){
+
+let html = "";
+
+data.forEach((p,i)=>{
+
+let stock = Number(p.stock || 0);
+
+let order = Number(p.order || 0);
+
+let available = stock - order;
+
+if(isNaN(available)) available = 0;
+
+let out = available <= 0;
+
+html += `
+
+<div class="card">
+
+<img src="${p.image}">
+
+<div class="card-body">
+
+<h3>${p.name}</h3>
+
+<p>${p.ingredients}</p>
+
+<div class="stock ${out ? 'out':''}">
+
+${out ? 'Out Of Stock' : 'Available: ' + available}
+
+</div>
+
+<div class="price">
+
+$${p.price}
+
+</div>
+
+<button
+onclick="openOrder(${i})"
+${out ? 'disabled':''}
+>
+
+${out ? 'Stock Finished':'Order Now'}
+
+</button>
+
+</div>
+
+</div>
+
+`;
+
+});
+
+document.getElementById("menu").innerHTML = html;
+
+}
+
+/* SEARCH */
+
+function searchFood(value){
+
+value = value.toLowerCase();
+
+let filtered = allProducts.filter(p=>
+p.name.toLowerCase().includes(value)
+);
+
+display(filtered);
+
+}
+
+/* CATEGORY LOAD */
+
+function loadCategories(){
+
+const box =
+document.getElementById("categoryBox");
+
+box.innerHTML = `
+<option value="ALL">
+✨ All Categories
+</option>
+`;
+
+const categories = [
+...new Set(
+allProducts.map(p=>p.category)
+)
+];
+
+categories.forEach(cat=>{
+
+box.innerHTML += `
+<option value="${cat}">
+${cat}
+</option>
+`;
+
+});
+
+}
+
+/* CATEGORY FILTER */
+
+function filterCategory(){
+
+const value =
+document.getElementById("categoryBox").value;
+
+if(value === "ALL"){
+
+display(allProducts);
+
+return;
+
+}
+
+const filtered =
+allProducts.filter(p =>
+p.category === value
+);
+
+display(filtered);
+
+}
+
+/* OPEN ORDER */
+
+function openOrder(i){
+
+currentProduct = allProducts[i];
+
+document.getElementById("orderModal").style.display = "flex";
+
+}
+
+/* CLOSE */
+
+function closeModal(){
+
+document.getElementById("orderModal").style.display = "none";
+
+}
+
+function closeInvoice(){
+
+document.getElementById("invoice").style.display = "none";
+
+}
+
+/* ORDER */
+
+async function confirmOrder(){
+
+const customerName =
+document.getElementById("name").value;
+
+const customerPhone =
+document.getElementById("phone").value;
+
+const customerAddress =
+document.getElementById("address").value;
+
+const qty = Number(
+document.getElementById("qty").value
+);
+
+if(
+!customerName ||
+!customerPhone ||
+!customerAddress ||
+!qty
+){
+alert("Fill all fields");
+return;
+}
+
+try{
+
+const response = await fetch(API_URL,{
+
+method:"POST",
+
+headers:{
+"Content-Type":"text/plain;charset=utf-8"
+},
+
+body:JSON.stringify({
+
+name:customerName,
+
+phone:customerPhone,
+
+address:customerAddress,
+
+product:currentProduct.name,
+
+quantity:qty,
+
+price:currentProduct.price,
+
+sheet:currentProduct.category
+
+})
+
+});
+
+const result = await response.json();
+
+console.log(result);
+
+/* FAIL */
+
+if(result.status === "failed"){
+
+alert(
+"❌ Not enough stock. Available: "
++ result.available
+);
+
+return;
+
+}
+
+/* ERROR */
+
+if(result.status === "error"){
+
+alert(
+"❌ " + (result.message || "Order Failed")
+);
+
+return;
+
+}
+
+/* SUCCESS */
+
+if(result.status === "success"){
+
+lastOrder = {
+
+name:customerName,
+
+phone:customerPhone,
+
+product:currentProduct.name,
+
+qty:qty,
+
+bill:result.bill,
+
+otp:result.otp
+
+};
+
+closeModal();
+
+showInvoice();
+
+loadData();
+
+}else{
+
+alert("❌ Unknown Server Response");
+
+}
+
+}catch(err){
+
+console.log(err);
+
+alert("❌ Server Error");
+
+}
+
+}
+
+/* SHOW INVOICE */
+
+function showInvoice(){
+
+document.getElementById("invName").innerText =
+"Name: " + lastOrder.name;
+
+document.getElementById("invPhone").innerText =
+"Phone: " + lastOrder.phone;
+
+document.getElementById("invProduct").innerText =
+"Product: " + lastOrder.product;
+
+document.getElementById("invQty").innerText =
+"Qty: " + lastOrder.qty;
+
+document.getElementById("invOtp").innerText =
+"OTP: " + lastOrder.otp;
+
+document.getElementById("invBill").innerText =
+"Bill: $" + lastOrder.bill;
+
+document.getElementById("invoice").style.display = "flex";
+
+}
+
+/* PDF */
+
+function downloadPDF(){
+
+const {jsPDF} = window.jspdf;
+
+const doc = new jsPDF();
+
+doc.text("Cafe Invoice",20,20);
+
+doc.text("Name: " + lastOrder.name,20,40);
+
+doc.text("Phone: " + lastOrder.phone,20,50);
+
+doc.text("Product: " + lastOrder.product,20,60);
+
+doc.text("Qty: " + lastOrder.qty,20,70);
+
+doc.text("OTP: " + lastOrder.otp,20,80);
+
+doc.text("Bill: $" + lastOrder.bill,20,90);
+
+doc.save("invoice.pdf");
+
+}
+
+/* START */
+
+loadData();
+
+</script>
+
+</body>
+</html>

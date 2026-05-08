@@ -1,0 +1,372 @@
+/* API URL */
+
+const API_URL = " Google App Script URL ";
+
+let allProducts = [];
+let currentProduct = null;
+let lastOrder = null;
+
+/* LOAD DATA */
+
+async function loadData(){
+
+try{
+
+const res = await fetch(API_URL);
+
+allProducts = await res.json();
+
+display(allProducts);
+
+loadCategories();
+
+}catch(err){
+
+document.getElementById("menu").innerHTML =
+"<h2>Server Offline</h2>";
+
+console.log(err);
+
+}
+
+}
+
+/* DISPLAY */
+
+function display(data){
+
+let html = "";
+
+data.forEach((p,i)=>{
+
+let stock = Number(p.stock || 0);
+
+let order = Number(p.order || 0);
+
+let available = stock - order;
+
+if(isNaN(available)) available = 0;
+
+let out = available <= 0;
+
+html += `
+
+<div class="card">
+
+<img src="${p.image}">
+
+<div class="card-body">
+
+<h3>${p.name}</h3>
+
+<p>${p.ingredients}</p>
+
+<div class="stock ${out ? 'out':''}">
+
+${out ? 'Out Of Stock' : 'Available: ' + available}
+
+</div>
+
+<div class="price">
+
+$${p.price}
+
+</div>
+
+<button
+onclick="openOrder(${i})"
+${out ? 'disabled':''}
+>
+
+${out ? 'Stock Finished':'Order Now'}
+
+</button>
+
+</div>
+
+</div>
+
+`;
+
+});
+
+document.getElementById("menu").innerHTML = html;
+
+}
+
+/* SEARCH */
+
+function searchFood(value){
+
+value = value.toLowerCase();
+
+let filtered = allProducts.filter(p=>
+p.name.toLowerCase().includes(value)
+);
+
+display(filtered);
+
+}
+
+/* CATEGORY LOAD */
+
+function loadCategories(){
+
+const box =
+document.getElementById("categoryBox");
+
+box.innerHTML = `
+<option value="ALL">
+✨ All Categories
+</option>
+`;
+
+const categories = [
+...new Set(
+allProducts.map(p=>p.category)
+)
+];
+
+categories.forEach(cat=>{
+
+box.innerHTML += `
+<option value="${cat}">
+${cat}
+</option>
+`;
+
+});
+
+}
+
+/* CATEGORY FILTER */
+
+function filterCategory(){
+
+const value =
+document.getElementById("categoryBox").value;
+
+if(value === "ALL"){
+
+display(allProducts);
+
+return;
+
+}
+
+const filtered =
+allProducts.filter(p =>
+p.category === value
+);
+
+display(filtered);
+
+}
+
+/* OPEN ORDER */
+
+function openOrder(i){
+
+currentProduct = allProducts[i];
+
+document.getElementById("orderModal").style.display = "flex";
+
+}
+
+/* CLOSE */
+
+function closeModal(){
+
+document.getElementById("orderModal").style.display = "none";
+
+}
+
+function closeInvoice(){
+
+document.getElementById("invoice").style.display = "none";
+
+}
+
+/* ORDER */
+
+async function confirmOrder(){
+
+const customerName =
+document.getElementById("name").value;
+
+const customerPhone =
+document.getElementById("phone").value;
+
+const customerAddress =
+document.getElementById("address").value;
+
+const qty = Number(
+document.getElementById("qty").value
+);
+
+if(
+!customerName ||
+!customerPhone ||
+!customerAddress ||
+!qty
+){
+alert("Fill all fields");
+return;
+}
+
+try{
+
+const response = await fetch(API_URL,{
+
+method:"POST",
+
+headers:{
+"Content-Type":"text/plain;charset=utf-8"
+},
+
+body:JSON.stringify({
+
+name:customerName,
+
+phone:customerPhone,
+
+address:customerAddress,
+
+product:currentProduct.name,
+
+quantity:qty,
+
+price:currentProduct.price,
+
+sheet:currentProduct.category
+
+})
+
+});
+
+const result = await response.json();
+
+console.log(result);
+
+/* FAIL */
+
+if(result.status === "failed"){
+
+alert(
+"❌ Not enough stock. Available: "
++ result.available
+);
+
+return;
+
+}
+
+/* ERROR */
+
+if(result.status === "error"){
+
+alert(
+"❌ " + (result.message || "Order Failed")
+);
+
+return;
+
+}
+
+/* SUCCESS */
+
+if(result.status === "success"){
+
+lastOrder = {
+
+name:customerName,
+
+phone:customerPhone,
+
+product:currentProduct.name,
+
+qty:qty,
+
+bill:result.bill,
+
+otp:result.otp
+
+};
+
+closeModal();
+
+showInvoice();
+
+loadData();
+
+}else{
+
+alert("❌ Unknown Server Response");
+
+}
+
+}catch(err){
+
+console.log(err);
+
+alert("❌ Server Error");
+
+}
+
+}
+
+/* SHOW INVOICE */
+
+function showInvoice(){
+
+document.getElementById("invName").innerText =
+"Name: " + lastOrder.name;
+
+document.getElementById("invPhone").innerText =
+"Phone: " + lastOrder.phone;
+
+document.getElementById("invProduct").innerText =
+"Product: " + lastOrder.product;
+
+document.getElementById("invQty").innerText =
+"Qty: " + lastOrder.qty;
+
+document.getElementById("invOtp").innerText =
+"OTP: " + lastOrder.otp;
+
+document.getElementById("invBill").innerText =
+"Bill: $" + lastOrder.bill;
+
+document.getElementById("invoice").style.display = "flex";
+
+}
+
+/* PDF */
+
+function downloadPDF(){
+
+const {jsPDF} = window.jspdf;
+
+const doc = new jsPDF();
+
+doc.text("Cafe Invoice",20,20);
+
+doc.text("Name: " + lastOrder.name,20,40);
+
+doc.text("Phone: " + lastOrder.phone,20,50);
+
+doc.text("Product: " + lastOrder.product,20,60);
+
+doc.text("Qty: " + lastOrder.qty,20,70);
+
+doc.text("OTP: " + lastOrder.otp,20,80);
+
+doc.text("Bill: $" + lastOrder.bill,20,90);
+
+doc.save("invoice.pdf");
+
+}
+
+/* START */
+
+loadData();

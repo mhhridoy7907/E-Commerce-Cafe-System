@@ -46,24 +46,22 @@ The system must store and sync product, order, and customer data using Google Sh
 ## Data Requirements (Google Sheets Structure)
 
 ### Products Sheet
-- id
-- name
+- Product Name
+- Ingredients
 - price
-- stock
 - image_url
+- stock
+- order `For Stock Alerts`
 
 ### Orders Sheet
-- order_id
+- Date and time
 - customer_name
-- items
-- total_price
-- status
-- timestamp
-
-### Users Sheet (Optional)
-- user_id
-- name
-- contact
+- phone
+- address
+- product
+- Quantity
+- Bill
+- OTP
 
 ---
 

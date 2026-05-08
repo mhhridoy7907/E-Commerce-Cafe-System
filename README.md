@@ -117,6 +117,9 @@ Google Sheets (Database)
 
 ---
 
+
+
+
 ## Security Design
 
 - API key validation in request header
@@ -125,3 +128,10 @@ Google Sheets (Database)
 - Restrict direct unauthorized access to Google Sheets
 
 ---
+
+# Demo screen short
+![privew](e.jpg)
+![privew](ee.jpg)
+![privew](eee.jpg)
+![privew](i.jpg)
+![privew](or.jpg)

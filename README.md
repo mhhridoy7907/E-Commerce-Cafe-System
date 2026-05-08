@@ -131,7 +131,11 @@ Google Sheets (Database)
 
 # Demo screen short
 ![privew](e.jpg)
+---
 ![privew](ee.jpg)
+---
 ![privew](eee.jpg)
+---
 ![privew](i.jpg)
+---
 ![privew](or.jpg)
